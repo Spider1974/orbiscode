@@ -1,0 +1,80 @@
+stages:
+- changelog
+- deploy
+- lint
+- build
+- release
+
+.cleanup_docker: &cleanup_docker |
+  docker rm --force $(docker ps --all --quiet) || true
+  docker network rm $(docker network ls --quiet) || true
+  docker volume rm $(docker volume ls --quiet) || true
+
+markdownlint:
+  stage: lint
+  before_script:
+  - *cleanup_docker
+  script: |
+    docker run \
+      --rm \
+      --volume ${PWD}:/workspace \
+        docker.io/volkerraschek/markdownlint:0.33.0 \
+          --ignore ./frontend/ui/node_modules \
+          --ignore ./CHANGELOG.md \
+          --ignore ./doc/U-SECURITY.md \
+          --ignore ./environments/README.md \
+          --ignore ./README.md \
+          .
+  after_script:
+  - *cleanup_docker
+
+yaml-linter:
+  stage: lint
+  before_script:
+  - *cleanup_docker
+  script: |
+    docker run \
+      --rm \
+      --volume ${PWD}:/workspace \
+      --workdir /workspace \
+        docker.io/volkerraschek/yamllint:1.28.0 \
+          --config-file .yamllint.yaml -f colored .
+  after_script:
+  - *cleanup_docker
+
+build:
+  stage: build
+  before_script:
+  - *cleanup_docker
+  script:
+  - ./scripts/docker/build-with-tests-in-docker.sh
+  after_script:
+  - *cleanup_docker
+
+sonar_analysis:
+  stage: build
+  script:
+  - docker run --rm -v ${PWD}:/workspace:z -v $HOME/.npmrc:/root/.npmrc -v /var/run/docker.sock:/var/run/docker.sock orbis-u/build-env-u-jdk-11:1.0.11 bash sonar-ci.sh $(id -u)
+  after_script:
+  - docker run --rm -v ${PWD}:/workspace busybox chown -R $(id -u):$(id -u) /workspace
+  except:
+  - tags
+
+#release_project:
+#  stage: release
+#  script:
+#    # git requires a user when you committing
+#    - git config user.name "bob"
+#    - git config user.email "bob@dedalus.com"
+#    # Gitlab CI runner works on DETACHED HEAD, but maven release plugin needs to be on a branch
+#    - git fetch origin && git rebase origin/master && git checkout -B master
+#    - ./scripts/docker/release-with-tests-in-docker.sh
+#    - git status
+#     # Update changelog after the release
+#    - git remote set-url origin ssh://git@trrsuv040.agfahealthcare.com:10022/orbis-u/qu-seed.git
+#    - mvn -B gitlog:generate
+#    - git commit -am "[skip ci] Generate changelog for released version" || true
+#    - git push origin master --force
+#  only:
+#    - master@orbis-u/qu-seed
+#  when: manual

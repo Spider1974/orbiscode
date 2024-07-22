@@ -1,0 +1,280 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.agfa.orbis.u</groupId>
+        <artifactId>qu-parent</artifactId>
+        <version>84.4200.28</version>
+    </parent>
+
+    <scm>
+        <url>${u.docker.app.image.scm.url}</url>
+        <connection>scm:git:ssh://git@trrsuv040.agfahealthcare.com:10022/orbis-u/qu-seed.git</connection>
+        <developerConnection>scm:git:ssh://git@trrsuv040.agfahealthcare.com:10022/orbis-u/qu-seed.git</developerConnection>
+        <tag>HEAD</tag>
+    </scm>
+
+    <groupId>orbis.u.qu-seed</groupId>
+    <artifactId>qu-seed</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>qu-seed</name>
+    <description>Template project based on Quarkus for new ORBIS U Apps</description>
+    <organization>
+        <name>Dedalus HealthCare Systems Group</name>
+    </organization>
+
+    <modules>
+        <module>frontend</module>
+        <module>resources</module>
+        <module>qu-seed-serdes-model</module>
+        <module>backend</module>
+        <module>db-migration</module>
+        <module>docker-image-jvm</module>
+        <module>integration-tests</module>
+    </modules>
+
+    <properties>
+        <!-- Common version range used by versions-maven-plugin -->
+        <version.range.common>[,84.4201.0-!)</version.range.common>
+
+        <!-- Updatable via versions-maven-plugin - mvn versions:update-properties versions:update-parent -U -N -->
+        <version.thirdparty-dml>84.4200.28</version.thirdparty-dml>
+        <version.u.commons>84.4200.20</version.u.commons>
+        <version.u.configuration.commons>84.4200.3</version.u.configuration.commons>
+        <version.u.security.commons>84.4200.4</version.u.security.commons>
+        <version.u.db-init-plugin>84.4200.5</version.u.db-init-plugin>
+
+        <!-- Forced to use registry client with same version as apicurio/apicurio-registry image used in the env. -->
+        <!-- otherwise leads to serialization issues on REST calls to the apicurio-registry API -->
+        <apicurio-registry.version>2.4.3.Final</apicurio-registry.version>
+        <!--
+          Application properties: These settings are used throughout the project
+          so that changes only have to be made at one point.
+        -->
+        <u.app.name>qu-seed</u.app.name>
+
+        <!--
+            Settings for the base container image
+
+            WARN: If you change from on ORBIS release to another the base image
+            (not the version), please keep in mind, that some properties like
+            port - HTTP or HTTPS, healthcheck or other important information
+            interhited by the base image can be different. This behavior leads
+            to issues on kubernetes environments, when your application is
+            already packaged as helm chart. Please send a merge request to the
+            corresponsing helm chart, if the importend information has been
+            changed.
+        -->
+        <u.docker.base.image.repository>orbis-u/base-quarkus-jvm</u.docker.base.image.repository>
+        <u.docker.base.image.version>84.4200.25</u.docker.base.image.version>
+        <u.docker.base.image.name>${u.docker.base.image.repository}:${u.docker.base.image.version}</u.docker.base.image.name>
+
+        <!-- Settings for the app container image -->
+        <u.docker.app.image.repository>orbis-u/${u.app.name}</u.docker.app.image.repository>
+        <u.docker.app.image.version>latest</u.docker.app.image.version>
+        <u.docker.app.image.name>${u.docker.app.image.repository}:${u.docker.app.image.version}</u.docker.app.image.name>
+
+        <u.docker.app.image.created>${maven.build.timestamp}</u.docker.app.image.created>
+        <maven.build.timestamp.format>yyyy-MM-dd HH:mm:ssZ</maven.build.timestamp.format>
+
+        <!--
+            Accessing directly ${project.scm.url} in a submodule leads to the
+            fact, that the path of the module is also part of the url which is
+            incorrect in context of the docker build module and the open
+            container image spec. For this reason is the url defined as separate
+            property to avoid this circumstance of the name of the module as
+            part of the url.
+        -->
+        <u.docker.app.image.scm.url>https://trrsuv040.agfahealthcare.com/orbis-u/qu-seed</u.docker.app.image.scm.url>
+
+        <!-- Settings for the front-end -->
+        <frontend.directory>${u.app.name}-frontend/frontend</frontend.directory>
+
+        <!-- Settings for testing -->
+        <test.user>SCHULUNG</test.user>
+        <test.pwd>schulung</test.pwd>
+
+        <!-- Plugins -->
+        <version.sonar-maven-plugin>3.9.1.2184</version.sonar-maven-plugin>
+        <sonar.host.url>https://sonarqube.orbis.dedalus.com/vie-prod/</sonar.host.url>
+        <sonar.projectName>qu-seed</sonar.projectName>
+    </properties>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>com.github.danielflower.mavenplugins</groupId>
+                <artifactId>gitlog-maven-plugin</artifactId>
+                <inherited>false</inherited>
+            </plugin>
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>${version.sonar-maven-plugin}</version>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <inherited>false</inherited>
+                <configuration>
+                    <autoLinkItems>false</autoLinkItems>
+                    <allowSnapshots>false</allowSnapshots>
+                    <generateBackupPoms>false</generateBackupPoms>
+                    <parentVersion>${version.range.common}</parentVersion>
+                    <properties>
+                        <property>
+                            <name>u.docker.base.image.version</name>
+                            <version>${version.range.common}</version>
+                            <dependencies>
+                                <dependency>
+                                    <groupId>com.agfa.healthcare.core</groupId>
+                                    <artifactId>base-quarkus-jvm</artifactId>
+                                </dependency>
+                            </dependencies>
+                        </property>
+                        <property>
+                            <name>version.thirdparty-dml</name>
+                            <version>${version.range.common}</version>
+                            <dependencies>
+                                <dependency>
+                                    <groupId>com.agfa.orbis.u</groupId>
+                                    <artifactId>qu-thirdparty-dml</artifactId>
+                                </dependency>
+                            </dependencies>
+                        </property>
+                        <property>
+                            <name>version.u.commons</name>
+                            <version>${version.range.common}</version>
+                            <dependencies>
+                                <dependency>
+                                    <groupId>com.agfa.orbis.u</groupId>
+                                    <artifactId>u-commons-dml</artifactId>
+                                </dependency>
+                            </dependencies>
+                        </property>
+                        <property>
+                            <name>version.u.configuration.commons</name>
+                            <version>${version.range.common}</version>
+                            <dependencies>
+                                <dependency>
+                                    <groupId>com.agfa.orbis.u</groupId>
+                                    <artifactId>configurations-dml</artifactId>
+                                </dependency>
+                            </dependencies>
+                        </property>
+                        <property>
+                            <name>version.u.security.commons</name>
+                            <version>${version.range.common}</version>
+                            <dependencies>
+                                <dependency>
+                                    <groupId>orbis.u.security</groupId>
+                                    <artifactId>security-dml</artifactId>
+                                </dependency>
+                            </dependencies>
+                        </property>
+                        <property>
+                            <name>version.u.db-init-plugin</name>
+                            <version>${version.range.common}</version>
+                            <dependencies>
+                                <dependency>
+                                    <groupId>orbis.u</groupId>
+                                    <artifactId>db-init-plugin</artifactId>
+                                </dependency>
+                            </dependencies>
+                        </property>
+                    </properties>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.agfa.orbis.u</groupId>
+                <artifactId>qu-thirdparty-dml</artifactId>
+                <version>${version.thirdparty-dml}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.agfa.orbis.u</groupId>
+                <artifactId>u-commons-bom-quarkus</artifactId>
+                <version>${version.u.commons}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.agfa.orbis.u</groupId>
+                <artifactId>configurations-dml</artifactId>
+                <version>${version.u.configuration.commons}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>orbis.u.security</groupId>
+                <artifactId>security-dml</artifactId>
+                <version>${version.u.security.commons}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>orbis.u.qu-seed</groupId>
+                <artifactId>resources</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>orbis.u.qu-seed</groupId>
+                <artifactId>qu-seed-serdes-model</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>orbis.u.qu-seed</groupId>
+                <artifactId>backend</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>orbis.u.qu-seed</groupId>
+                <artifactId>db-migration</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>orbis.u.qu-seed</groupId>
+                <artifactId>frontend</artifactId>
+                <type>pom</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>jakarta.annotation</groupId>
+                <artifactId>jakarta.annotation-api</artifactId>
+                <version>1.3.5</version>
+            </dependency>
+            <dependency>
+                <groupId>io.apicurio</groupId>
+                <artifactId>apicurio-registry-serdes-avro-serde</artifactId>
+                <version>${apicurio-registry.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.apicurio</groupId>
+                <artifactId>apicurio-registry-client</artifactId>
+                <version>${apicurio-registry.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <profiles>
+        <profile>
+            <id>RELEASE</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <properties>
+                <u.docker.app.image.version>${project.version}</u.docker.app.image.version>
+            </properties>
+        </profile>
+    </profiles>
+</project>

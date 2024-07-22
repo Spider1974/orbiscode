@@ -1,0 +1,25 @@
+# Editor configuration, see http://editorconfig.org
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_size = 4
+insert_final_newline = false
+trim_trailing_whitespace = true
+ij_formatter_off_tag = @formatter:off
+ij_formatter_on_tag = @formatter:on
+ij_formatter_tags_enabled = true
+
+[{.gitignore,.gitattributes,.env,*.json,*.md,*.sh,*.xml,*.yml,*.yaml}]
+indent_size = 2
+indent_style = space
+
+[Makefile]
+indent_style = tab
+
+[pom.xml]
+indent_size = 4
+
+[{*.yaml,*.yml}]
+ij_yaml_indent_sequence_value = false
